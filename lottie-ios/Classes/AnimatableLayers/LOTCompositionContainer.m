@@ -82,15 +82,21 @@
 }
 
 - (void)displayWithFrame:(NSNumber *)frame forceUpdate:(BOOL)forceUpdate {
-  if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- Composition Displaying Frame %@ --------------------", frame);
-  [super displayWithFrame:frame forceUpdate:forceUpdate];
-  NSNumber *childFrame = @(frame.floatValue - _frameOffset.floatValue);
-  for (LOTLayerContainer *child in _childLayers) {
-    [child displayWithFrame:childFrame forceUpdate:forceUpdate];
-  }
-  if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- ------------------------------- --------------------");
-  if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- ------------------------------- --------------------");
-
+    dispatch_block_t block = ^{
+        if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- Composition Displaying Frame %@ --------------------", frame);
+        [super displayWithFrame:frame forceUpdate:forceUpdate];
+        NSNumber *childFrame = @(frame.floatValue - _frameOffset.floatValue);
+        for (LOTLayerContainer *child in _childLayers) {
+            [child displayWithFrame:childFrame forceUpdate:forceUpdate];
+        }
+        if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- ------------------------------- --------------------");
+        if (ENABLE_DEBUG_LOGGING) NSLog(@"-------------------- ------------------------------- --------------------");
+    };
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
 }
 
 - (BOOL)setValue:(nonnull id)value

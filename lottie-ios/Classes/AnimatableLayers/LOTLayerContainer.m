@@ -226,24 +226,32 @@
 }
 
 - (void)displayWithFrame:(NSNumber *)frame forceUpdate:(BOOL)forceUpdate {
-  if (ENABLE_DEBUG_LOGGING) NSLog(@"View %@ Displaying Frame %@", self, frame);
-  BOOL hidden = NO;
-  if (_inFrame && _outFrame) {
-    hidden = (frame.floatValue < _inFrame.floatValue ||
-              frame.floatValue > _outFrame.floatValue);
-  }
-  self.hidden = hidden;
-  if (hidden) {
-    return;
-  }
-  if (_opacityInterpolator && [_opacityInterpolator hasUpdateForFrame:frame]) {
-    self.opacity = [_opacityInterpolator floatValueForFrame:frame];
-  }
-  if (_transformInterpolator && [_transformInterpolator hasUpdateForFrame:frame]) {
-    _wrapperLayer.transform = [_transformInterpolator transformForFrame:frame];
-  }
-  [_contentsGroup updateWithFrame:frame withModifierBlock:nil forceLocalUpdate:forceUpdate];
-  _maskLayer.currentFrame = frame;
+
+    dispatch_block_t block = ^{
+        if (ENABLE_DEBUG_LOGGING) NSLog(@"View %@ Displaying Frame %@", self, frame);
+        BOOL hidden = NO;
+        if (_inFrame && _outFrame) {
+            hidden = (frame.floatValue < _inFrame.floatValue ||
+                      frame.floatValue > _outFrame.floatValue);
+        }
+        self.hidden = hidden;
+        if (hidden) {
+            return;
+        }
+        if (_opacityInterpolator && [_opacityInterpolator hasUpdateForFrame:frame]) {
+            self.opacity = [_opacityInterpolator floatValueForFrame:frame];
+        }
+        if (_transformInterpolator && [_transformInterpolator hasUpdateForFrame:frame]) {
+            _wrapperLayer.transform = [_transformInterpolator transformForFrame:frame];
+        }
+        [_contentsGroup updateWithFrame:frame withModifierBlock:nil forceLocalUpdate:forceUpdate];
+        _maskLayer.currentFrame = frame;
+    };
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
 }
 
 - (void)addAndMaskSublayer:(nonnull CALayer *)subLayer {
