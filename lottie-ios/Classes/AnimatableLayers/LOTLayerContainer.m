@@ -206,12 +206,19 @@
 }
 
 - (void)display {
-  LOTLayerContainer *presentation = self;
-  if (self.animationKeys.count &&
-      self.presentationLayer) {
-    presentation = (LOTLayerContainer *)self.presentationLayer;
-  }
-  [self displayWithFrame:presentation.currentFrame];
+    dispatch_block_t block = ^{
+        LOTLayerContainer *presentation = self;
+        if (self.animationKeys.count &&
+            self.presentationLayer) {
+            presentation = (LOTLayerContainer *)self.presentationLayer;
+        }
+        [self displayWithFrame:presentation.currentFrame];
+    };
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), block);
+    }
 }
 
 - (void)displayWithFrame:(NSNumber *)frame {
